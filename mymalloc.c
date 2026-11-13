@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -47,7 +48,7 @@ struct MemRegion *request_space(struct MemRegion *last, size_t size) {
     return block;
 }
 
-void *malloc_v2(size_t size) {
+void *malloc_func(size_t size) {
     struct MemRegion *new_mem;
 
     // Checks 
@@ -98,17 +99,34 @@ void free(void* ptr) {
     }
 }
 
-void *malloc_v1(size_t bytes) {
-    // Pointer to the top of the heap
-    void *ptr = sbrk(0);
-
-    // Try assigning the number of bytes
-    void *request = sbrk(bytes + META_SIZE);
-
-    if (request == (void*) -1) {
-        return NULL;
+void *realloc(void *ptr, size_t size) {
+    if (!ptr) {
+        return malloc_func(size);
     }
-    else {
+
+    struct MemRegion *mem_ptr = get_region_ptr(ptr);
+
+    // We have enough size and can shrink and return same start
+    if (size < mem_ptr->size) {
+        mem_ptr->size = size;
         return ptr;
     }
+    
+    // We need to reallocate
+    void *new_ptr;
+    new_ptr = malloc_func(size);
+    if (!new_ptr) {
+        return NULL;
+    }
+
+    // Copy memory over to the new destination with memcpy
+    memcpy(new_ptr, ptr, mem_ptr->size);
+    free(ptr);
+    return new_ptr;
+}
+
+void *calloc(size_t elts, size_t elt_size) {
+    void *mem = malloc_func(elts * elt_size);
+    memset(mem, 0, elts * elt_size);
+    return mem;
 }
