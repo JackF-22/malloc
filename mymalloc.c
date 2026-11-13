@@ -79,6 +79,25 @@ void *malloc_v2(size_t size) {
     return new_mem+1;
 }
 
+struct MemRegion *get_region_ptr(void *ptr) {
+    return (struct MemRegion*)ptr - 1;
+}
+
+void free(void* ptr) {
+    if (!ptr) {
+        return;
+    }
+    
+    struct MemRegion *mem_ptr = get_region_ptr(ptr);
+    if (!mem_ptr || mem_ptr->free == 1) {
+        return;
+    }
+    else {
+        mem_ptr->free = 0;
+        return;
+    }
+}
+
 void *malloc_v1(size_t bytes) {
     // Pointer to the top of the heap
     void *ptr = sbrk(0);
