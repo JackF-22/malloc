@@ -4,21 +4,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include "mymalloc.h"
 
-#define META_SIZE sizeof(MemRegion)
-void *global_base = NULL;
-
-struct MemRegion {
-    size_t size;
-    struct MemRegion* next;
-    int free;  // 0 for used, 1 for free
-} MemRegion;
-
-int main(void) {
-    printf("Hello, World!");
-
-    return 0;
-}
+static void *global_base = NULL;
 
 struct MemRegion *find_memory(struct MemRegion **last, size_t size) {
     struct MemRegion *current = global_base;
@@ -27,6 +15,7 @@ struct MemRegion *find_memory(struct MemRegion **last, size_t size) {
         *last = current;
         current = current->next;
     }
+    fragment_check(current, size);
     return current;
 }
 
@@ -84,7 +73,7 @@ struct MemRegion *get_region_ptr(void *ptr) {
     return (struct MemRegion*)ptr - 1;
 }
 
-void free(void* ptr) {
+void free_func(void* ptr) {
     if (!ptr) {
         return;
     }
@@ -94,12 +83,12 @@ void free(void* ptr) {
         return;
     }
     else {
-        mem_ptr->free = 0;
+        mem_ptr->free = 1;
         return;
     }
 }
 
-void *realloc(void *ptr, size_t size) {
+void *realloc_func(void *ptr, size_t size) {
     if (!ptr) {
         return malloc_func(size);
     }
@@ -121,12 +110,60 @@ void *realloc(void *ptr, size_t size) {
 
     // Copy memory over to the new destination with memcpy
     memcpy(new_ptr, ptr, mem_ptr->size);
-    free(ptr);
+    free_func(ptr);
     return new_ptr;
 }
 
-void *calloc(size_t elts, size_t elt_size) {
+void *calloc_func(size_t elts, size_t elt_size) {
     void *mem = malloc_func(elts * elt_size);
     memset(mem, 0, elts * elt_size);
     return mem;
 }
+
+
+/*
+What if we free a block of 1000 bytes, then use it for a 100 byte request
+We end up allocating all 1000 bytes for this request because it's
+defined by the metadata. Let's create fragmentation to avoid this.
+*/
+void fragment_check(struct MemRegion *metadata, size_t requested_size) {
+    if (!metadata) {
+        return;
+    }
+
+    // Let's take a look at metadata to see the size
+    if (metadata->size - requested_size <= META_SIZE) {
+        return;
+    }
+    else {
+        // Change the metadata size to requested and then we need
+        // to create an updated piece of metadata
+
+        struct MemRegion *new_data = (struct MemRegion*)((char*) metadata + META_SIZE + requested_size);
+        new_data->size = metadata->size - (requested_size + META_SIZE);
+        new_data->next = metadata->next;
+        new_data->free = 1;
+
+        metadata->next = new_data;
+        metadata->size = requested_size;
+    }
+}
+
+
+// ============== EXTRA ADDITIONS ===============
+void heap_state() {
+    if (!global_base) {
+        printf("Heap is empty\n");
+    }
+    else {
+        struct MemRegion *ptr = global_base;
+        int num_block = 1;
+        while (ptr != NULL) {
+            printf("Block: %d | Size: %d | Free: %s\n", 
+                num_block++, ptr->size, ptr->free == 0 ? "No" : "Yes");
+            ptr = ptr->next;
+        }
+    }
+}
+
+
