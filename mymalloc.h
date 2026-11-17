@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #define META_SIZE sizeof(MemRegion)
+#define BYTE_ALIGNMENT 8
 
 struct MemRegion {
     size_t size;
@@ -17,5 +18,6 @@ void *calloc_func(size_t count, size_t size);
 void *realloc_func(void *ptr, size_t size);
 void heap_state(void);
 void fragment_check(struct MemRegion *metadata, size_t size);
+void check_alignment(size_t* size);
 
 #endif

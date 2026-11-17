@@ -44,6 +44,7 @@ void *malloc_func(size_t size) {
     if (size < 0) {
         return NULL;
     }
+    check_alignment(&size);
 
     if (!global_base) {
         new_mem = request_space(NULL, size);
@@ -54,9 +55,10 @@ void *malloc_func(size_t size) {
         global_base = new_mem;
     }
     else {
-        new_mem = find_memory(&global_base, size);
+        struct MemRegion *last = global_base;
+        new_mem = find_memory(&last, size);
         if (!new_mem) {
-            new_mem = request_space(global_base, size);
+            new_mem = request_space(last, size);
             if (!new_mem) {
                 return NULL;
             }
@@ -139,6 +141,9 @@ void fragment_check(struct MemRegion *metadata, size_t requested_size) {
         // Change the metadata size to requested and then we need
         // to create an updated piece of metadata
 
+        // Check byte alignment
+        check_alignment(&requested_size);
+
         struct MemRegion *new_data = (struct MemRegion*)((char*) metadata + META_SIZE + requested_size);
         new_data->size = metadata->size - (requested_size + META_SIZE);
         new_data->next = metadata->next;
@@ -166,4 +171,8 @@ void heap_state() {
     }
 }
 
-
+void check_alignment(size_t* size) {
+    if (*size % BYTE_ALIGNMENT != 0) {
+        *size += (BYTE_ALIGNMENT - (*size % BYTE_ALIGNMENT));
+    }
+}
