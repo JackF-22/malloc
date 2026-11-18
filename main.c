@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 #include "mymalloc.h"
 
-int main(void) {
+int main(void)
+{
     heap_state();
 
     // Test allocating memory
@@ -20,6 +22,10 @@ int main(void) {
     for (int i = 0; i < 10; i++) {
         *(num_arr) = i;
     }
+    heap_state();
+    free_func(num_arr);
+
+    // Test block merge after previous free
     heap_state();
 
     return 0;

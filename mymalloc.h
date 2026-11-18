@@ -21,6 +21,7 @@ void free_func(void *ptr);
 void *realloc_func(void *ptr, size_t size);
 void *calloc_func(size_t count, size_t size);
 void fragment_check(struct MemRegion *metadata, size_t size);
+void merge_blocks(struct MemRegion *metadata);
 void heap_state(void);
 void check_alignment(size_t* size);
 
