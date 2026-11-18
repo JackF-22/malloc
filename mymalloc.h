@@ -9,6 +9,7 @@
 struct MemRegion {
     size_t size;
     struct MemRegion* next;
+    struct MemRegion* prev;
     int free;  // 0 for used, 1 for free
 } MemRegion;
 
