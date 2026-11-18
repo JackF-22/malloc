@@ -12,12 +12,15 @@ struct MemRegion {
     int free;  // 0 for used, 1 for free
 } MemRegion;
 
+struct MemRegion *get_region_ptr(void *ptr);
+struct MemRegion *find_memory(struct MemRegion **mem_arr, size_t size);
+struct MemRegion *request_space(struct MemRegion *base, size_t size);
 void *malloc_func(size_t size);
 void free_func(void *ptr);
-void *calloc_func(size_t count, size_t size);
 void *realloc_func(void *ptr, size_t size);
-void heap_state(void);
+void *calloc_func(size_t count, size_t size);
 void fragment_check(struct MemRegion *metadata, size_t size);
+void heap_state(void);
 void check_alignment(size_t* size);
 
 #endif

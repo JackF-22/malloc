@@ -8,35 +8,71 @@
 
 static void *global_base = NULL;
 
-struct MemRegion *find_memory(struct MemRegion **last, size_t size) {
+
+/**
+ * @get_region_ptr Turns a pointer to memory into a pointer to its metadata
+ * 
+ * @param ptr  Pointer to a region in memory
+ * @return Pointer to that region's metadata block
+ */
+struct MemRegion *get_region_ptr(void *ptr) {
+    return (struct MemRegion*)ptr - 1;
+}
+
+
+/**
+ * @find_memory Traverses our array of metadata blocks searching for free memory
+ * 
+ * @param mem_arr Pointer to an array of metadata blocks of previously defined regions
+ * @param size The number of bytes we are looking to allocate
+ * @return A pointer to a metadata block in memory
+ */
+struct MemRegion *find_memory(struct MemRegion **mem_arr, size_t size) {
     struct MemRegion *current = global_base;
     while (current && !(current->free && current->size >= size)) {
         // Advance through memory to the next pointer
-        *last = current;
+        *mem_arr = current;
         current = current->next;
     }
     fragment_check(current, size);
     return current;
 }
 
-struct MemRegion *request_space(struct MemRegion *last, size_t size) {
-    // Ask for a pointer to the top of the heap
-    struct MemRegion *block = sbrk(0);
+
+/**
+ * @request_space Utilizes the sbrk function to get a pointer on the heap
+ * 
+ * @param last A pointer to the base of memory (global_base)
+ * @param size The number of bytes we need to allocate
+ * @return A pointer to the metadata of the new region
+ */
+struct MemRegion *request_space(struct MemRegion *base, size_t size) {
+    // sbrk changes the breakpoint of the heap
+    // struct MemRegion *block = sbrk(0);
     void *request = sbrk(size + META_SIZE); 
+    struct MemRegion *metadata = get_region_ptr(request);
 
     if (request == (void*) -1) {
         return NULL;
     }
-    if (last) {
-        last->next = block;
+    if (base) {
+        base->next = request;
     }
 
-    block->size = size;
-    block->next = NULL;
-    block->free = 0;
-    return block;
+    metadata->size = size;
+    metadata->next = NULL;
+    metadata->prev = base;
+    metadata->free = 0;
+    return metadata;
 }
 
+
+/**
+ * @malloc_func Locate a region of memory that is available to use
+ * 
+ * @param size  The number of bytes the client desires
+ * @return Pointer to the available region of memory (starting at the metadata)
+ */
 void *malloc_func(size_t size) {
     struct MemRegion *new_mem;
 
@@ -55,10 +91,10 @@ void *malloc_func(size_t size) {
         global_base = new_mem;
     }
     else {
-        struct MemRegion *last = global_base;
-        new_mem = find_memory(&last, size);
+        struct MemRegion *base = global_base;
+        new_mem = find_memory(&base, size);
         if (!new_mem) {
-            new_mem = request_space(last, size);
+            new_mem = request_space(base, size);
             if (!new_mem) {
                 return NULL;
             }
@@ -71,10 +107,12 @@ void *malloc_func(size_t size) {
     return new_mem+1;
 }
 
-struct MemRegion *get_region_ptr(void *ptr) {
-    return (struct MemRegion*)ptr - 1;
-}
 
+/**
+ * @free_func Free a region of memory for future use
+ * 
+ * @param ptr A pointer to a region in memory
+ */
 void free_func(void* ptr) {
     if (!ptr) {
         return;
@@ -116,6 +154,14 @@ void *realloc_func(void *ptr, size_t size) {
     return new_ptr;
 }
 
+
+/**
+ * @calloc_func Initializes memory with a starting value of 0
+ * 
+ * @param elts  The number of elements we are initializing
+ * @param elt_size  The size in bytes of each element
+ * @return Pointer to this block of memorya
+ */
 void *calloc_func(size_t elts, size_t elt_size) {
     void *mem = malloc_func(elts * elt_size);
     memset(mem, 0, elts * elt_size);
@@ -127,6 +173,16 @@ void *calloc_func(size_t elts, size_t elt_size) {
 What if we free a block of 1000 bytes, then use it for a 100 byte request
 We end up allocating all 1000 bytes for this request because it's
 defined by the metadata. Let's create fragmentation to avoid this.
+
+Original Setup:
+-------------------------
+| metadata | 1000 Bytes |
+-------------------------
+
+New Setup:
+------------------------------------------------------
+| metadata | 100 Bytes | new_data | 900 Bytes (Free) |
+------------------------------------------------------
 */
 void fragment_check(struct MemRegion *metadata, size_t requested_size) {
     if (!metadata) {
@@ -147,6 +203,7 @@ void fragment_check(struct MemRegion *metadata, size_t requested_size) {
         struct MemRegion *new_data = (struct MemRegion*)((char*) metadata + META_SIZE + requested_size);
         new_data->size = metadata->size - (requested_size + META_SIZE);
         new_data->next = metadata->next;
+        new_data->prev = metadata;
         new_data->free = 1;
 
         metadata->next = new_data;
