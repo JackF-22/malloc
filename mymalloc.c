@@ -61,7 +61,6 @@ struct MemRegion *request_space(struct MemRegion *base, size_t size) {
 
     metadata->size = size;
     metadata->next = NULL;
-    metadata->prev = base;
     metadata->free = 0;
     return metadata;
 }
@@ -203,7 +202,6 @@ void fragment_check(struct MemRegion *metadata, size_t requested_size) {
         struct MemRegion *new_data = (struct MemRegion*)((char*) metadata + META_SIZE + requested_size);
         new_data->size = metadata->size - (requested_size + META_SIZE);
         new_data->next = metadata->next;
-        new_data->prev = metadata;
         new_data->free = 1;
 
         metadata->next = new_data;
