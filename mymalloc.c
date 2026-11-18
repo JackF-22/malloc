@@ -123,7 +123,7 @@ void free_func(void* ptr) {
     }
     else {
         mem_ptr->free = 1;
-        merge_blocks(mem_ptr);        
+        return;
     }
 }
 
