@@ -123,7 +123,7 @@ void free_func(void* ptr) {
     }
     else {
         mem_ptr->free = 1;
-        return;
+        merge_blocks(mem_ptr);        
     }
 }
 
@@ -212,6 +212,7 @@ void fragment_check(struct MemRegion *metadata, size_t requested_size) {
 
 // ============== EXTRA ADDITIONS ===============
 void heap_state() {
+    printf("========== Heap State ===========\n");
     if (!global_base) {
         printf("Heap is empty\n");
     }
@@ -224,6 +225,7 @@ void heap_state() {
             ptr = ptr->next;
         }
     }
+    printf("\n");
 }
 
 void check_alignment(size_t* size) {
