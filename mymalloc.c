@@ -124,7 +124,7 @@ void free_func(void* ptr) {
     }
     else {
         mem_ptr->free = 1;
-        return;
+        
     }
 }
 
@@ -212,6 +212,37 @@ void fragment_check(struct MemRegion *metadata, size_t requested_size) {
 }
 
 
+/**
+ * @merge_blocks Check the surrounding blocks for mergeable pieces
+ * 
+ * Original:
+ * -----------------------------------------------
+ * | Metadata_1 | x bytes | Metadata_2 | y bytes |
+ * -----------------------------------------------
+ * 
+ * New:
+ * --------------------------
+ * | Metadata | x + y bytes |
+ * --------------------------
+ * 
+ * @param metadata Pointer to the metadata block that was just freed
+ */
+void merge_blocks(struct MemRegion *metadata) {
+    // Check for previous block
+    if (metadata->prev != NULL && metadata->prev->free == 1) {
+        size_t new_size = metadata->size + metadata->prev->size;
+        metadata->prev->size = new_size;
+        metadata->prev->next = metadata->next;
+    }
+    // Check for next block
+    if (metadata->next != NULL && metadata->next->free == 1) {
+        size_t new_size = metadata->size + metadata->next->size;
+        metadata->size = new_size;
+        metadata->next = metadata->next->next;
+    }
+}
+
+
 // ============== EXTRA ADDITIONS ===============
 void heap_state() {
     if (!global_base) {
@@ -221,8 +252,10 @@ void heap_state() {
         struct MemRegion *ptr = global_base;
         int num_block = 1;
         while (ptr != NULL) {
-            printf("Block: %d | Size: %d | Free: %s\n", 
-                num_block++, ptr->size, ptr->free == 0 ? "No" : "Yes");
+            printf("Block: %d | Size: %d | Free: %s | Prev Size: %d | Next Size: %d \n", 
+                num_block++, ptr->size, ptr->free == 0 ? "No" : "Yes",
+                ptr->prev != NULL ? ptr->prev->size : 0,
+                ptr->next != NULL ? ptr->next->size : 0);
             ptr = ptr->next;
         }
     }
