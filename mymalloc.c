@@ -128,6 +128,13 @@ void free_func(void* ptr) {
     }
 }
 
+/**
+ * @realloc_func Expand (or shrink) a memory region to fulfill a new size
+ * 
+ * @param ptr Pointer to the current memory block that needs to be moved/altered
+ * @param size The number of bytes that we need to account for now
+ * @return A pointer to the newly allocated memory that fits the new size
+ */
 void *realloc_func(void *ptr, size_t size) {
     if (!ptr) {
         return malloc_func(size);
@@ -169,21 +176,22 @@ void *calloc_func(size_t elts, size_t elt_size) {
 }
 
 
-/*
-What if we free a block of 1000 bytes, then use it for a 100 byte request
-We end up allocating all 1000 bytes for this request because it's
-defined by the metadata. Let's create fragmentation to avoid this.
-
-Original Setup:
--------------------------
-| metadata | 1000 Bytes |
--------------------------
-
-New Setup:
-------------------------------------------------------
-| metadata | 100 Bytes | new_data | 900 Bytes (Free) |
-------------------------------------------------------
-*/
+/**
+ * @fragment_check Determine if the size of the block we're allocating fits what we need
+ * 
+ * Original Setup:
+ * -------------------------
+ * | metadata | 1000 Bytes |
+ * -------------------------
+ * 
+ * New Setup:
+ * ------------------------------------------------------
+ * | metadata | 100 Bytes | new_data | 900 Bytes (Free) |
+ * ------------------------------------------------------
+ * 
+ * @param metadata A pointer to the metadata of the region we are allocating memory for
+ * @param requested_size The size that is needed, compared to the actual size of the pre-existing block
+ */
 void fragment_check(struct MemRegion *metadata, size_t requested_size) {
     if (!metadata) {
         return;
@@ -243,7 +251,9 @@ void merge_blocks(struct MemRegion *metadata) {
 }
 
 
-// ============== EXTRA ADDITIONS ===============
+/**
+ * @heap_state Prints out a nicely formatted overview of the current state of the heap
+ */
 void heap_state() {
     printf("========== Heap State ===========\n");
     if (!global_base) {
@@ -263,6 +273,11 @@ void heap_state() {
     printf("\n");
 }
 
+/**
+ * @check_alignment Calculation to make sure our bytes are still aligned properly
+ * 
+ * @param size A pointer to a size variable, we update it to reflect proper alignment
+ */
 void check_alignment(size_t* size) {
     if (*size % BYTE_ALIGNMENT != 0) {
         *size += (BYTE_ALIGNMENT - (*size % BYTE_ALIGNMENT));
